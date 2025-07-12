@@ -4,9 +4,12 @@ pipeline {
     stages {
         stage("Checkout stage") {
             steps {
-                echo "Checkout stage"
+                echo "Checkout stage with github webhook"
+                sh 'ls -lrt'
+                sh 'pwd'
             }
         }
+
     }
 
     post {
