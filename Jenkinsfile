@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    options {
-        (time: 60, unit: 'SECONDS')
-    }
-
     stages {
         stage("Checkout stage") {
             steps {
