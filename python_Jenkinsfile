@@ -1,0 +1,31 @@
+
+
+Install dependencies--> pip install -r requirements.txt
+Install a specific package--> pip install <package>
+Upgrade a package--> pip install --upgrade <package>
+Uninstall a package--> pip uninstall <package>
+Check outdated packages--> pip list --outdated
+
+pipeline {
+    agent any
+
+    environment {
+        VENV_DIR = 'venv'
+    }
+
+    stages {
+        stage('Setup Python Environment') {
+            steps {
+                sh 'python3 -m venv $VENV_DIR'
+                sh './$VENV_DIR/bin/pip install --upgrade pip'
+                sh './$VENV_DIR/bin/pip install -r requirements.txt'
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh './$VENV_DIR/bin/python -m unittest discover tests'
+            }
+        }
+    }
+}

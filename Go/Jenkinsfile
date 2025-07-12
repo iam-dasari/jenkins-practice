@@ -1,0 +1,102 @@
+pipeline {
+    agent {
+        docker {
+            image 'golang:1.21-alpine'
+            args '-u root:root' // Allow installing tools like golangci-lint
+        }
+    }
+
+    environment {
+        GO111MODULE = 'on'
+        GOCACHE     = "${WORKSPACE}/.cache/go-build"
+        GOMODCACHE  = "${WORKSPACE}/.cache/pkg/mod"
+        GOPRIVATE   = '' // Optional: private repo domain
+        BINARY_NAME = 'app' // Your Go binary name
+    }
+
+    options {
+        timestamps()
+        ansiColor('xterm')
+        skipStagesAfterUnstable()
+    }
+
+    stages {
+
+        stage('Setup') {
+            steps {
+                sh 'apk add --no-cache git curl make'
+                sh 'go version'
+            }
+        }
+
+        stage('Restore Cache') {
+            steps {
+                cache(path: '.cache', key: "go-cache-${env.GIT_COMMIT}", restoreKeys: ['go-cache-'])
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'go mod tidy'
+                sh 'go mod download'
+            }
+        }
+
+        stage('Lint') {
+            steps {
+                sh '''
+                go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+                golangci-lint run ./...
+                '''
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'go test -v -cover ./...'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'go build -o build/${BINARY_NAME} ./cmd/main.go'
+            }
+        }
+
+        stage('Archive Binary') {
+            steps {
+                archiveArtifacts artifacts: 'build/**', fingerprint: true
+            }
+        }
+
+        // Optional: Docker Image Build and Push
+        /*
+        stage('Docker Build & Push') {
+            environment {
+                DOCKER_IMAGE = "your-dockerhub-user/${BINARY_NAME}:${env.BUILD_NUMBER}"
+            }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh """
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    docker build -t $DOCKER_IMAGE .
+                    docker push $DOCKER_IMAGE
+                    """
+                }
+            }
+        }
+        */
+    }
+
+    post {
+        always {
+            junit '**/TEST-*.xml' // If using junit-go or gotestsum
+            cleanWs()
+        }
+        failure {
+            mail to: 'devops@example.com',
+                 subject: "Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                 body: "Check Jenkins for more details: ${env.BUILD_URL}"
+        }
+    }
+}

@@ -1,0 +1,42 @@
+
+Clean project-->	mvn clean
+Compile--> mvn compile
+Run tests--> mvn test
+Package JAR/WAR--> mvn package
+Install to local rep--> mvn install
+Deploy to remote repo--> mvn deploy
+Run with specific profile--> mvn clean install -P <profile>
+
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven 3.8.6' // Set up in Jenkins > Global Tool Configuration
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh 'mvn deploy'
+            }
+        }
+    }
+}
